@@ -1,8 +1,8 @@
 import { err, log } from "./log";
 import { join, basename, resolve } from "path";
 import { RMParser } from "./ricemood";
-import { getWallpaperFromConfigVariable } from "./wallpaper-grabber";
 import { execFileSync, execSync, spawnSync } from "child_process";
+import { existsSync, readFileSync, writeFileSync } from "fs";
 import { resolvePath } from "../lib/fs-plus";
 
 interface configStructure {
@@ -10,6 +10,7 @@ interface configStructure {
   end_tag?: string;
   imagefile: string;
   imagefile_script: string;
+  swatch_script: string;
   const: { [key: string]: string };
   quality: number;
   [key: string]:
@@ -30,32 +31,33 @@ async function applyConfig(c: configStructure, cfgPath: any) {
   );
   if (items.length < 1)
     err(`There is no configured file yet. Please edit ${cfgPath.file} first.`);
+  
+  let swatch;
+  if (!c.swatch_script) {
+    if (c.imagefile_script) {
+      c.imagefile = execFileSync(
+        join(cfgPath.folder, c.imagefile_script)
+      ).toString();
+      c.imagefile = c.imagefile.trim();
+    }
+    // Optimize load speed
+    const { existsSync, readFileSync, writeFileSync } = await import("fs");
+    const { getSwatch } = await import("./get-swatch");
 
-  if (c.imagefile_script) {
-    c.imagefile = execFileSync(
-      join(cfgPath.folder, c.imagefile_script)
-    ).toString();
-    c.imagefile = c.imagefile.trim();
+    // check if image exists
+    if (!(c.imagefile && existsSync(c.imagefile)))
+      err(`imagefile ${c.imagefile} not found`);
+
+    displayImage(c.imagefile);
+    // Take the color palette from the image
+    log(`getting color for ${basename(c.imagefile)}`);
+    swatch = await getSwatch(c.imagefile, c.quality);
+  } else {
+    const swatch_file = execFileSync(
+      join(cfgPath.folder, c.swatch_script)
+    ).toString().trim();
+    swatch = (await import(swatch_file)).default;
   }
-  // Get Image from wallpaper if possible
-  else if (c.imagefile.startsWith("$")) {
-    const imageFromGrabber = getWallpaperFromConfigVariable(c.imagefile);
-    if (imageFromGrabber) c.imagefile = resolvePath(imageFromGrabber);
-    log("getting wallpaper...");
-  }
-
-  // Optimize load speed
-  const { existsSync, readFileSync, writeFileSync } = await import("fs");
-  const { getSwatch } = await import("./get-swatch");
-
-  // check if image exists
-  if (!(c.imagefile && existsSync(c.imagefile)))
-    err(`imagefile ${c.imagefile} not found`);
-
-  displayImage(c.imagefile);
-  // Take the color palette from the image
-  log(`getting color for ${basename(c.imagefile)}`);
-  const swatch = await getSwatch(c.imagefile, c.quality);
 
   // create the parser
   const delimiter =

@@ -3,7 +3,6 @@ import { join, dirname } from "path";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import ini from "ini";
 import { err, log } from "./log";
-import { getWallpaper, detectWallpaperManager } from "./wallpaper-grabber";
 export { getConfig };
 
 const homeDirectory = os.homedir();
@@ -55,13 +54,6 @@ function getConfig(customConfigFile?: string): RMConfig | undefined {
 }
 
 function defaultConfig(): string {
-  log("detecting wallpaper manager");
-  const wallpaper = detectWallpaperManager();
-  if (!wallpaper)
-    log(
-      "ricemood failed to detect wallpaper manager, please specify your image file or write your own script"
-    );
-  else log(`wallpaper manager [${wallpaper}] selected`)
   return `\
 
 ;; both are RegExp
@@ -72,7 +64,7 @@ tag_end   = \\^
 quality   = 1
 
 ;; get wallpaper manager ($feh,$nitrogen)
-imagefile = $${wallpaper}
+imagefile = fijfpijaifojhsifjsoijfqsfa
 ;imagefile_script = ~/getmyimage.sh
 
 ;; see example : 
